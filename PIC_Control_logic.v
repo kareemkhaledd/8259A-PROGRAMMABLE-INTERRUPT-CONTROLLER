@@ -25,7 +25,16 @@ module Control_logic(
  
  output reg data_out_from_control_logic_flag,
  output reg [7:0] output_data,
- 
+ //cascade
+ input [2:0] in_cascade_lines,
+ output reg [2:0] out_cascade_lines, //in case the device is master
+ output reg latch_ISR,//Flag used to determine when to capture and use the ISR
+ input slave,
+ output cascade_io,
+ output slave_program_or_enable_buffer,
+
+ output	reg level_or_edge_triggered_flag, // flag to determine the trigger mode used edge/level
+ output reg special_fully_nested_config 
   );
   
   
@@ -482,3 +491,216 @@ module Control_logic(
 		else
 			special_mask_mode<=special_mask_mode;
 	end
+	
+/*****************************************************
+	*                  Cascading block                   * 
+	******************************************************/	
+	//Master or slave determination
+	
+	always@*begin
+		if(single_or_cascade_flag==1'b1)
+			is_Slave = 1'b0;
+		else if (buffered_mode_config==1'b0)
+			is_Slave = ~slave;//slave is the external input signal and ~ is because it is active low 
+		else
+			is_Slave = ~buffered_master_or_slave_config;//if we are in buffered mode the external signal slave is not used to determine the pic is slave or not instead we use the configuratin of the buffered mode
+	end
+		assign cascade_io = is_Slave;
+	//Slave      Determines which slave is operating 
+	
+	
+	always@* begin
+		if(is_Slave==1'b0)
+			slave_enabled = 1'b0;
+		else if(cascade_config[2:0]!=in_cascade_lines)
+			slave_enabled = 1'b0;
+		else
+			slave_enabled = 1'b1;
+	end
+	
+	//
+    // Cascade signals (master)
+    //
+	wire    interrupt_from_slave = (acknowledge_interrupt & cascade_config) != 8'b00000000; //Acknowledged interrupts flag 
+	
+	always@* begin
+        if (single_or_cascade_flag == 1'b1)
+            cascade_output_ack2 = 1'b1;
+        else if (slave_enabled == 1'b1)
+            cascade_output_ack2 = 1'b1;
+        else if ((is_Slave == 1'b0) && (interrupt_from_slave == 1'b0))
+            cascade_output_ack2= 1'b1;
+        else
+            cascade_output_ack2 = 1'b0;
+    end
+	// Output slave id
+	reg [2:0] out_cascade;
+    always@* begin
+        if (is_Slave == 1'b1)
+            out_cascade_lines <= 3'b000;
+        else if ((control_s != ACK1) && (control_s != ACK2))
+            out_cascade_lines <= 3'b000;
+        else if (interrupt_from_slave == 1'b0)
+            out_cascade_lines <= 3'b000;
+        else begin
+			//bit2num(acknowledge_interrupt,out_cascade);
+			if(acknowledge_interrupt== 8'b00000001) out_cascade = 3'b000;
+			if(acknowledge_interrupt== 8'b00000010) out_cascade = 3'b001;
+			if(acknowledge_interrupt== 8'b00000100) out_cascade = 3'b010;
+			if(acknowledge_interrupt== 8'b00001000) out_cascade = 3'b011;
+			if(acknowledge_interrupt== 8'b00010000) out_cascade = 3'b100;
+			if(acknowledge_interrupt== 8'b00100000) out_cascade = 3'b101;
+			if(acknowledge_interrupt== 8'b01000000) out_cascade = 3'b110;
+			if(acknowledge_interrupt== 8'b10000000) out_cascade = 3'b111;
+            out_cascade_lines <= out_cascade;
+		end
+    end
+	
+	
+	/*****************************************************
+	*                   Interrupt Signals                * 
+	******************************************************/
+	
+	//interrupt signal to cpu
+	always@(write_ICW1, interrupt,acknowledge_end,poll_end) begin
+		if(write_ICW1==1'b1)
+			INT <= 1'b0;
+		else if(interrupt != 8'b00000000)
+			INT <= 1'b1;
+		else if(acknowledge_end==1'b1)	
+			INT <= 1'b0;
+		else if(poll_end == 1'b1)
+			INT <= 1'b0;
+		else 
+			INT <=INT;
+	end
+	
+	//freeze signal to IRR
+	always@(next_control_s) begin 
+		if(next_control_s == Control_Ready)
+			freeze <= 1'b0;
+		else
+			freeze <= 1'b1;
+	
+	end
+	
+	// clear interupt request for IRR
+	
+	always@* begin
+		if(write_ICW1==1'b1)
+			clear_interrupt_request = 8'b11111111;
+		else if(latch_ISR==1'b0)
+			clear_interrupt_request = 8'b00000000;
+		else
+			clear_interrupt_request = interrupt;
+	
+	end
+	
+	
+	reg [7:0] interrupt_after_ack1;
+	
+	always@ (write_ICW1,control_s,highest_level_in_service)begin
+		if(write_ICW1 == 1'b1)
+			interrupt_after_ack1<= 8'b00000000;
+		else if(control_s == ACK1)
+			interrupt_after_ack1<= highest_level_in_service;
+		else 
+			interrupt_after_ack1<=interrupt_after_ack1;
+	end
+	
+	//State machine that controls data output form the PIC to the data bus
+	reg [2:0] interrupt_after1;
+	reg [2:0] acknowledge_int;
+	always@* begin
+		if(INTA == 1'b0)begin
+			case(control_s)
+				Control_Ready:begin
+					data_out_from_control_logic_flag = 1'b0;
+					output_data = 8'b00000000;
+				end
+				ACK1:begin
+					data_out_from_control_logic_flag = 1'b0;
+					output_data = 8'b00000000;
+				end
+				ACK2:begin
+					if(cascade_output_ack2 == 1'b1)begin
+						data_out_from_control_logic_flag = 1'b1;
+						if(is_Slave == 1'b1) begin
+							 if(interrupt_after_ack1== 8'b00000001) interrupt_after1 = 3'b000;
+							 if(interrupt_after_ack1== 8'b00000010) interrupt_after1 = 3'b001;
+							 if(interrupt_after_ack1== 8'b00000100) interrupt_after1 = 3'b010;
+							 if(interrupt_after_ack1== 8'b00001000) interrupt_after1 = 3'b011;
+							 if(interrupt_after_ack1== 8'b00010000) interrupt_after1 = 3'b100;
+							 if(interrupt_after_ack1== 8'b00100000) interrupt_after1 = 3'b101;
+							 if(interrupt_after_ack1== 8'b01000000) interrupt_after1 = 3'b110;
+							 if(interrupt_after_ack1== 8'b10000000) interrupt_after1 = 3'b111;
+							output_data[2:0]=interrupt_after1;
+						end
+						else begin
+							 if(acknowledge_interrupt== 8'b00000001) acknowledge_int = 3'b000;
+							 if(acknowledge_interrupt== 8'b00000010) acknowledge_int = 3'b001;
+							 if(acknowledge_interrupt== 8'b00000100) acknowledge_int = 3'b010;
+							 if(acknowledge_interrupt== 8'b00001000) acknowledge_int = 3'b011;
+							 if(acknowledge_interrupt== 8'b00010000) acknowledge_int = 3'b100;
+							 if(acknowledge_interrupt== 8'b00100000) acknowledge_int = 3'b101;
+							 if(acknowledge_interrupt== 8'b01000000) acknowledge_int = 3'b110;
+							 if(acknowledge_interrupt== 8'b10000000) acknowledge_int = 3'b111;
+							
+							output_data[2:0]=acknowledge_int;
+						end
+						//8086 cpu only is handled
+						if(u8086_or_mcs80_config == 1'b1)
+							output_data={interrupt_vector_address[10:6],output_data[2:0]};
+						else begin
+							data_out_from_control_logic_flag = 1'b0;
+							output_data = 8'b00000000;
+						end
+					end
+					else begin
+						data_out_from_control_logic_flag = 1'b0;
+						output_data = 8'b00000000;
+					end
+				end
+				default:begin
+					data_out_from_control_logic_flag = 1'b0;
+					output_data = 8'b00000000;
+				end
+			endcase
+		end
+		else begin
+			data_out_from_control_logic_flag = 1'b0;
+			output_data = 8'b00000000;
+		end
+	end
+	
+	
+	task num2bit(input [2:0] source, output reg [7:0] result);
+    case (source)
+      3'b000:  result = 8'b00000001;
+      3'b001:  result = 8'b00000010;
+      3'b010:  result = 8'b00000100;
+      3'b011:  result = 8'b00001000;
+      3'b100:  result = 8'b00010000;
+      3'b101:  result = 8'b00100000;
+      3'b110:  result = 8'b01000000;
+      3'b111:  result = 8'b10000000;
+      default: result = 8'b00000000;
+    endcase
+  endtask
+  
+  
+   task bit2num(input [7:0] source, output reg [2:0] result);
+    case (source)
+      8'b00000001: result = 3'b000;
+      8'b00000010: result = 3'b001;
+      8'b00000100: result = 3'b010;
+      8'b00001000: result = 3'b011;
+      8'b00010000: result = 3'b100;
+      8'b00100000: result = 3'b101;
+      8'b01000000: result = 3'b110;
+      8'b10000000: result = 3'b111;
+      default:     result = 3'b111;
+    endcase
+  endtask
+	
+endmodule
