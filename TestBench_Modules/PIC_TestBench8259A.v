@@ -426,6 +426,250 @@ module PIC8259A_TB;
     end
     endtask
 
+	//
+    // TASK : non specific test
+    //
+    task TASK_NON_SPECIFIC_EOI_TEST;
+    begin
+        #(`TB_CYCLE * 0);
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b10000000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000001);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+
+        // Interrupt
+        TASK_INTERRUPT_REQUEST(8'b11100000);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+        
+        #(`TB_CYCLE * 5);
+        
+        TASK_INTERRUPT_REQUEST(8'b11100010);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+        
+        #(`TB_CYCLE * 5);
+
+        TASK_INTERRUPT_REQUEST(8'b11101000);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+        #(`TB_CYCLE * 5);
+
+    end
+    endtask
+
+    //
+    // TASK : non specific test
+    //
+    task TASK_ROTATE_ON_AUTO_END_OF_INTERRUPT;
+      begin
+        #(`TB_CYCLE * 0);
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000011);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW2
+        TASK_WRITE_DATA(1'b0, 8'b10000111);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+        
+        TASK_INTERRUPT_REQUEST(8'b00000100);
+        TASK_SEND_ACK_TO_8086();
+        TASK_WRITE_DATA(1'b0, 8'b00000000);
+        
+
+        TASK_INTERRUPT_REQUEST(8'b11111111);
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 12);
+      end
+    endtask
+    
+    task TASK_ROTATE_ON_NON_SPECIFIC_END_OF_INTERRUPT;
+      begin
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000001);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW2
+        TASK_WRITE_DATA(1'b0, 8'b10100111);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+        TASK_INTERRUPT_REQUEST(8'b00001000);
+        TASK_SEND_ACK_TO_8086();
+        TASK_WRITE_DATA(1'b0, 8'b10100000);
+        TASK_INTERRUPT_REQUEST(8'b11111111);
+
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+      end
+    endtask
+    
+    task TASK_READING_IRR_TEST;
+    begin
+        #(`TB_CYCLE * 0);
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00001101);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+
+        $display("***** read irr ***** at ");
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001010);
+        TASK_READ_DATA(1'b0);
+
+        TASK_INTERRUPT_REQUEST(8'b00000001);
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 1);
+
+        TASK_INTERRUPT_REQUEST(8'b00000001);
+        TASK_READ_DATA(1'b0);
+
+        TASK_INTERRUPT_REQUEST(8'b00000010);
+        TASK_READ_DATA(1'b0);
+
+        TASK_INTERRUPT_REQUEST(8'b00000100);
+        TASK_READ_DATA(1'b0);
+
+        TASK_INTERRUPT_REQUEST(8'b00001000);
+        TASK_READ_DATA(1'b0);
+
+        TASK_INTERRUPT_REQUEST(8'b00010000);
+        TASK_READ_DATA(1'b0);
+        #(`TB_CYCLE * 12);
+    end
+    endtask
+      task TASK_READING_ISR_TEST;
+      begin
+        #(`TB_CYCLE * 0);
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000001);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001011);
+        #(`TB_CYCLE * 1);
+        
+        TASK_INTERRUPT_REQUEST(8'b00001000);
+        
+        
+        TASK_SEND_ACK_TO_8086();
+        TASK_READ_DATA(1'b0);
+        #(`TB_CYCLE * 1);
+        TASK_SEND_NON_SPECIFIC_EOI();
+        #(`TB_CYCLE * 1);
+        
+        TASK_INTERRUPT_REQUEST(8'b00001100);
+        TASK_SEND_ACK_TO_8086();
+        TASK_READ_DATA(1'b0);
+        #(`TB_CYCLE * 1);
+        TASK_SEND_NON_SPECIFIC_EOI();
+        #(`TB_CYCLE * 12);
+      end
+      endtask
+        
+	
+	task CASCADE_MODE_MASTER;
+	begin
+	      #(`TB_CYCLE * 0);
+		    // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011101);
+        // ICW2
+       // TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // ICW3
+        TASK_WRITE_DATA(1'b1, 8'b10000111);
+        // ICW4
+      //  TASK_WRITE_DATA(1'b1, 8'b00000001);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+
+        slave_program_n         = 1'b1;
+
+        // interrupt
+        TASK_INTERRUPT_REQUEST(8'b00000100);
+
+        TASK_SEND_ACK_TO_8086();
+		TASK_SEND_NON_SPECIFIC_EOI();
+		
+		 #(`TB_CYCLE * 12);
+	end
+	endtask
+	
+	task CASCADE_MODE_SLAVE;
+	begin
+		#(`TB_CYCLE * 0);
+		// ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011101);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // ICW3
+        TASK_WRITE_DATA(1'b1, 8'b10000111);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000001);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+		
+		slave_program_n         = 1'b0;
+
+        // interrupt
+        TASK_INTERRUPT_REQUEST(8'b10000000);
+
+		//  TASK_SEND_ACK_TO_8086_SLAVE(3'b000);
+		//   TASK_SEND_ACK_TO_8086_SLAVE(3'b001);
+		//  TASK_SEND_ACK_TO_8086_SLAVE(3'b010);
+        // TASK_SEND_ACK_TO_8086_SLAVE(3'b011);
+        // TASK_SEND_ACK_TO_8086_SLAVE(3'b100);
+        // TASK_SEND_ACK_TO_8086_SLAVE(3'b101);
+        //TASK_SEND_ACK_TO_8086_SLAVE(3'b110);
+          TASK_SEND_ACK_TO_8086_SLAVE(3'b111);
+
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        #(`TB_CYCLE * 12);
+	end
+	endtask
 
 
     //
