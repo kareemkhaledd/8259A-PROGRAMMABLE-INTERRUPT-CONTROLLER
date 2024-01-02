@@ -13,6 +13,19 @@ module Control_logic(
  input [7:0] interrupt, //input coming from the priority resolver
  input [7:0] highest_level_in_service,
  input read,
+ //output to handle which register to read
+ output reg read_enable,
+ output reg IRR_OR_ISR,
+ output reg INT,
+ output reg [2:0] priority_rotate,
+ output reg [7:0] interrupt_mask,
+ output reg [7:0] end_interrupt,
+ output reg freeze,
+ output reg [7:0] clear_interrupt_request,
+ 
+ output reg data_out_from_control_logic_flag,
+ output reg [7:0] output_data,
+ 
   );
   
   
@@ -218,4 +231,254 @@ module Control_logic(
 			level_or_edge_triggered_flag<=data_bus[3];
 		else
 			level_or_edge_triggered_flag<=level_or_edge_triggered_flag;
+	end
+	
+	
+	    // Initialization command word 2
+    //
+    // A15-A8 (MCS-80) or T7-T3 (8086, 8088)
+	
+	always@(write_ICW1 , write_ICW2) begin
+		if(write_ICW1==1)
+			interrupt_vector_address[10:3]<=3'b000;
+		else if(write_ICW2==1)
+			interrupt_vector_address[10:3]<=data_bus;
+		else
+			interrupt_vector_address[10:3]<=interrupt_vector_address[10:3];
+	end
+	
+	
+	// Initialization command word 3
+	 reg [7:0] cascade_config;
+	
+	// S7-S0 (MASTER) or ID2-ID0 (SLAVE)
+	always@(write_ICW1 ,write_ICW3)begin
+		if(write_ICW1==1'b1)
+			cascade_config <= 8'b00000000;
+		else if(write_ICW3==1'b1)
+			cascade_config<= data_bus;
+		else
+			cascade_config<=cascade_config;
+		end
+	
+	
+	// Initialization command word 4
+	
+	
+	// special fully nested mode
+	always@(write_ICW1,write_ICW4)begin
+		if(write_ICW1==1'b1)
+			special_fully_nested_config<=1'b0;
+		else if(write_ICW4==1'b1)
+			special_fully_nested_config<=data_bus[4];
+		else 
+			special_fully_nested_config<=special_fully_nested_config;
+	end
+	
+	//Buffered mode configure
+	always@(write_ICW1,write_ICW4)begin
+		if(write_ICW1==1'b1)
+			buffered_mode_config <=1'b0;
+		else if(write_ICW4==1'b1)
+			buffered_mode_config<=data_bus[3];
+		else
+			buffered_mode_config<=buffered_mode_config;
+	end
+	assign slave_program_or_enable_buffer = ~ buffered_mode_config;
+	
+	//Master/slave
+	always@(write_ICW1,write_ICW4)begin
+		if(write_ICW1==1'b1)
+			buffered_master_or_slave_config<=1'b0;
+		else if(write_ICW4==1'b1)
+			buffered_master_or_slave_config<=data_bus[2];
+		else
+			buffered_master_or_slave_config<=buffered_master_or_slave_config;
+	end
+	
+	//Automatic end of interrupt
+	reg automatic_end_of_interrupt;
+	
+	always@(write_ICW1,write_ICW4)begin
+		if(write_ICW1==1'b1)
+			automatic_end_of_interrupt<=1'b0;
+		else if(write_ICW4==1'b1)
+			automatic_end_of_interrupt<=data_bus[1];
+		else
+			automatic_end_of_interrupt<=automatic_end_of_interrupt;
+	end
+	
+	
+	//CPU used
+	reg u8086_or_mcs80_config ;
+	always@(write_ICW1,write_ICW4)begin
+		if(write_ICW1==1'b1)
+			u8086_or_mcs80_config<=1'b0;
+		else if(write_ICW4==1'b1)
+			u8086_or_mcs80_config<=data_bus[0];
+		else
+			u8086_or_mcs80_config<=u8086_or_mcs80_config;
+			
+	end
+		
+		
+			
+	
+	//
+	//operation control word 1
+	//
+	reg special_mask_mode;
+	//Interrupt Mask registers
+	always@(write_ICW1 , write_OCW1_register) begin
+		if(write_ICW1==1)
+			interrupt_mask<= 8'b11111111;
+		else if((write_OCW1_register==1'b1) && (special_mask_mode==1'b0))
+			interrupt_mask <= data_bus;
+		else
+			interrupt_mask<=interrupt_mask;
+	end
+	
+	
+	//
+	//operation control word 2
+	//
+	reg [7:0] acknowledge_interrupt ;
+	reg [7:0] num2bit1;
+	
+	
+	//End of interrupt mode
+	always@(write_ICW1,automatic_end_of_interrupt,write_OCW2,highest_level_in_service)begin
+		if(write_ICW1==1'b1)
+			end_interrupt = 8'b11111111;
+		else if((automatic_end_of_interrupt == 1'b1)&&(acknowledge_end== 1'b1))
+			end_interrupt=acknowledge_interrupt;
+		else if(write_OCW2==1'b1)begin
+			case(data_bus[6:5])
+				2'b01: 	 end_interrupt = highest_level_in_service;
+				2'b11: begin
+					//num2bit(data_bus[2:0],num2bit1);
+					if(data_bus[2:0]==3'b000)  num2bit1 = 8'b00000001;
+					if(data_bus[2:0]==3'b001)  num2bit1 = 8'b00000010;
+					if(data_bus[2:0]==3'b010)  num2bit1 = 8'b00000100;
+					if(data_bus[2:0]==3'b011)  num2bit1 = 8'b00001000;
+					if(data_bus[2:0]==3'b100)  num2bit1 = 8'b00010000;
+					if(data_bus[2:0]==3'b101)  num2bit1 = 8'b00100000;
+					if(data_bus[2:0]==3'b110)  num2bit1 = 8'b01000000;
+					if(data_bus[2:0]==3'b111)  num2bit1 = 8'b10000000;
+					end_interrupt = num2bit1;
+				end
+                default: end_interrupt = 8'b00000000;
+			endcase
+		end
+		else
+			end_interrupt = 8'b00000000;
+	end
+	//Auto rotate mode 
+	reg auto_rotate;
+	
+	always@(write_ICW1,write_OCW2)begin
+		if (write_ICW1==1'b1)
+			auto_rotate <= 1'b0;
+		else if (write_OCW2==1'b1)begin
+			case(data_bus[7:5])
+				3'b000:  auto_rotate <= 1'b0;
+                3'b100:  auto_rotate <= 1'b1;
+				default: auto_rotate <= auto_rotate;
+			endcase
+		end
+		else
+			auto_rotate<=auto_rotate;
+	end
+	
+	// Rotation
+	reg [2:0] bit2num1;
+	reg [2:0] bit2num2;
+	always@ (write_ICW1,auto_rotate,acknowledge_end,write_OCW2,highest_level_in_service)begin
+		if (write_ICW1==1'b1)
+			priority_rotate <=3'b111;
+		else if((auto_rotate==1'b1)&&(acknowledge_end==1'b1))begin
+			//bit2num(acknowledge_interrupt,bit2num1);
+			if(acknowledge_interrupt== 8'b00000001) bit2num1 = 3'b000;
+			if(acknowledge_interrupt== 8'b00000010) bit2num1 = 3'b001;
+			if(acknowledge_interrupt== 8'b00000100) bit2num1 = 3'b010;
+			if(acknowledge_interrupt== 8'b00001000) bit2num1 = 3'b011;
+			if(acknowledge_interrupt== 8'b00010000) bit2num1 = 3'b100;
+			if(acknowledge_interrupt== 8'b00100000) bit2num1 = 3'b101;
+			if(acknowledge_interrupt== 8'b01000000) bit2num1 = 3'b110;
+			if(acknowledge_interrupt== 8'b10000000) bit2num1 = 3'b111;
+			priority_rotate <= bit2num1;
+		end
+		else if(write_OCW2==1'b1)begin
+			case(data_bus[7:5])
+				3'b101:begin
+					//bit2num(highest_level_in_service,bit2num2);
+					if(highest_level_in_service== 8'b00000001) bit2num2 = 3'b000;
+					if(highest_level_in_service== 8'b00000010) bit2num2 = 3'b001;
+					if(highest_level_in_service== 8'b00000100) bit2num2 = 3'b010;
+					if(highest_level_in_service== 8'b00001000) bit2num2 = 3'b011;
+					if(highest_level_in_service== 8'b00010000) bit2num2 = 3'b100;
+					if(highest_level_in_service== 8'b00100000) bit2num2 = 3'b101;
+					if(highest_level_in_service== 8'b01000000) bit2num2 = 3'b110;
+					if(highest_level_in_service== 8'b10000000) bit2num2 = 3'b111;
+					priority_rotate <= bit2num2;
+				end
+				3'b110:  priority_rotate <= data_bus[2:0];
+				3'b111:  priority_rotate <= data_bus[2:0];
+				default: priority_rotate <= priority_rotate;
+			endcase
+		end
+		else
+			priority_rotate<=priority_rotate;
+	end
+			
+	
+	
+	///////////////////////////////////////////////////////////////////////LATCH IN SERVICE////////////////////////////////////////
+	// interrupt buffer
+
+	 always@(write_ICW1, acknowledge_end,poll_end,latch_ISR,highest_level_in_service,acknowledge_interrupt) begin
+        if (write_ICW1 == 1'b1)
+            acknowledge_interrupt <= 8'b00000000;
+        else if (acknowledge_end)
+            acknowledge_interrupt <= 8'b00000000;
+        else if (poll_end == 1'b1)
+            acknowledge_interrupt <= 8'b00000000;
+        else if (latch_ISR == 1'b1)
+            acknowledge_interrupt <= highest_level_in_service;
+        else
+            acknowledge_interrupt <= acknowledge_interrupt;
+    end
+	
+	
+	
+	//
+    // Operation control word 3
+    //
+	
+	//Read IRR or read ISR
+	
+	always@(write_ICW1,write_OCW3)begin
+		if(write_ICW1==1'b1)begin
+			read_enable<=1'b1;
+			IRR_OR_ISR<=0;
+		end
+		else if(write_OCW3==1'b1)begin
+			read_enable<=data_bus[1];
+			IRR_OR_ISR<=data_bus[0];
+		end
+		else begin
+			read_enable<=read_enable;
+			IRR_OR_ISR<=IRR_OR_ISR;
+		end
+	end
+	
+	//Special mask mode signals (captured but not implemented)
+	
+	always@(write_ICW1,write_ICW3)begin
+		if(write_ICW1==1'b1)
+			special_mask_mode<=0;
+		else if((write_ICW3==1'b1)&&(data_bus[6]==1'b1))
+			special_mask_mode<=data_bus[5];
+		else
+			special_mask_mode<=special_mask_mode;
 	end
