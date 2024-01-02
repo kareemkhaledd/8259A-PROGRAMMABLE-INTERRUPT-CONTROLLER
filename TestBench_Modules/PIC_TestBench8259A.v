@@ -1,21 +1,10 @@
 
 `define TB_CYCLE        20
-`define TB_FINISH_COUNT 429496729
 `timescale 1ns / 10ps
 
 module PIC8259A_TB;
 
    
-
-    //
-    // Generate wave file to check
-    //
-`ifdef IVERILOG
-    initial begin
-        $dumpfile("tb.vcd");
-        $dumpvars(0, tb);
-    end
-`endif
   
 
     //
