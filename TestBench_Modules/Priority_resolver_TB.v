@@ -177,3 +177,235 @@ module priority_resolver_TB;
         #(`TB_CYCLE * 1);
     end
     endtask
+    
+    
+    //
+    // Task : SPECIAL MASK MODE TEST
+    //
+    task TASK_SPECIAL_MASK_MODE_TEST;
+    begin
+        interrupt_mask = 8'b00000000;
+        #(`TB_CYCLE * 1);
+
+        in_service_register    = 8'b00000011;
+        interrupt_special_mask = 8'b00000001;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register    = 8'b00000110;
+        interrupt_special_mask = 8'b00000010;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register    = 8'b00001100;
+        interrupt_special_mask = 8'b00000100;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register    = 8'b00011000;
+        interrupt_special_mask = 8'b00001000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register    = 8'b00110000;
+        interrupt_special_mask = 8'b00010000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register    = 8'b01100000;
+        interrupt_special_mask = 8'b00100000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register    = 8'b11000000;
+        interrupt_special_mask = 8'b01000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register    = 8'b10000000;
+        interrupt_special_mask = 8'b10000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register    = 8'b00000000;
+        interrupt_special_mask = 8'b00000000;
+        #(`TB_CYCLE * 1);
+    end
+    endtask
+
+    //
+    // Task : SPECIAL FULLY NEST MODE TEST
+    //
+    task TASK_SPECIAL_FULLY_NEST_MODE_TEST;
+    begin
+        special_fully_nest_config = 1'b1;
+        #(`TB_CYCLE * 1);
+
+        in_service_register      = 8'b00000001;
+        highest_level_in_service = 8'b00000001;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register      = 8'b00000010;
+        highest_level_in_service = 8'b00000010;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register      = 8'b00000100;
+        highest_level_in_service = 8'b00000100;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register      = 8'b00001000;
+        highest_level_in_service = 8'b00001000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register      = 8'b00010000;
+        highest_level_in_service = 8'b00010000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+
+        in_service_register      = 8'b00100000;
+        highest_level_in_service = 8'b00100000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register      = 8'b01000000;
+        highest_level_in_service = 8'b01000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register      = 8'b10000000;
+        highest_level_in_service = 8'b10000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register      = 8'b00000000;
+        highest_level_in_service = 8'b00000000;
+
+        special_fully_nest_config = 1'b0;
+        #(`TB_CYCLE * 1);
+    end
+    endtask
+
+    //
+    // Task : ROTATION TEST
+    //
+    task TASK_ROTATION_TEST;
+    begin
+        priority_rotate = 3'b000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00000001;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        priority_rotate = 3'b001;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00000010;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000011;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        priority_rotate = 3'b010;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00000100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        priority_rotate = 3'b011;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00001000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00001100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00001110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00001111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        priority_rotate = 3'b100;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00010000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00011000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00011100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00011110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00011111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        priority_rotate = 3'b101;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00100000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00110000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00111000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00111100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00111110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00111111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        priority_rotate = 3'b110;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b01000000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01100000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01110000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01111000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01111100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01111110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01111111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        priority_rotate = 3'b111;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00000000;
+        #(`TB_CYCLE * 1);
+    end
+    endtask
+
+    //
+    // Test pattern
+    //
+    initial begin
+        TASK_INIT();
+
+        $display("***** TEST INTERRUPT NASK ***** at %d", tb_cycle_counter);
+        TASK_INTERRUPT_MASK_TEST();
+
+    
+        #(`TB_CYCLE * 1);
+
+    end
+endmodule
+
