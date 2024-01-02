@@ -198,17 +198,233 @@ module PIC8259A_TB;
     endtask
 
 
+    //
+    // TASK : 8086 interrupt test
+    //
+    task TASK_8086_NORMAL_INTERRUPT_TEST;
+    begin
+        #(`TB_CYCLE * 0);
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b11111000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000001);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+
+        // Interrupt
+        TASK_INTERRUPT_REQUEST(8'b00000001);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_INTERRUPT_REQUEST(8'b00000010);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_INTERRUPT_REQUEST(8'b00000100);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_INTERRUPT_REQUEST(8'b00001000);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_INTERRUPT_REQUEST(8'b00010000);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_INTERRUPT_REQUEST(8'b00100000);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_INTERRUPT_REQUEST(8'b01000000);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        TASK_INTERRUPT_REQUEST(8'b10000000);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        #(`TB_CYCLE * 12);
+    end
+    endtask
+
+    //
+    // TASK : level torigger test
+    //
+    task TASK_LEVEL_TORIGGER_TEST;
+    begin
+        #(`TB_CYCLE * 0);
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000011);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+        
+        #(`TB_CYCLE * 7);
+        
+        interrupt_request = 8'b00001000;
+        #(`TB_CYCLE * 2);
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 2);
+        interrupt_request = 8'b00000000;
+
+        #(`TB_CYCLE * 7);
+        interrupt_request = 8'b10000000;
+        #(`TB_CYCLE * 2);
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 2);
+        interrupt_request = 8'b00000000;
 
 
+        #(`TB_CYCLE * 7);
+        interrupt_request = 8'b00000010;
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 2);
+        interrupt_request = 8'b00000000;
+
+        #(`TB_CYCLE * 7);
+        
+    end
+    endtask
+
+    //
+    // TASK : edge torigger test
+    //
+    task TASK_EDGE_TORIGGER_TEST;
+    begin
+        #(`TB_CYCLE * 0);
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00010111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000011);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+        TASK_INTERRUPT_REQUEST(8'b11100000);
+        TASK_SEND_ACK_TO_8086();
+
+        #(`TB_CYCLE * 5);
+        TASK_INTERRUPT_REQUEST(8'b00000010);
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+        TASK_INTERRUPT_REQUEST(8'b00000100);
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+        TASK_INTERRUPT_REQUEST(8'b00001000);
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+        TASK_INTERRUPT_REQUEST(8'b00010000);
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+        TASK_INTERRUPT_REQUEST(8'b00100000);
+
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+        TASK_INTERRUPT_REQUEST(8'b01000000);
+
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+        TASK_INTERRUPT_REQUEST(8'b10000000);
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+        TASK_INTERRUPT_REQUEST(8'b00000000);
+        #(`TB_CYCLE * 12);
+    end
+    endtask
+
+    //
+    // TASK : interrupt mask test
+    //
+    task TASK_INTERRUPT_MASK_TEST;
+    begin
+        #(`TB_CYCLE * 0);
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000001);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b11111111);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+
+        // Can't interrupt
+        TASK_INTERRUPT_REQUEST(8'b11111111);
+        #(`TB_CYCLE * 5);
+
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b11111110);
+        // Interrupt
+        TASK_INTERRUPT_REQUEST(8'b11111111);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b11111101);
+        // Interrupt
+        TASK_INTERRUPT_REQUEST(8'b11111111);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
+
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b11111011);
+        // Interrupt
+        TASK_INTERRUPT_REQUEST(8'b11111111);
+        TASK_SEND_ACK_TO_8086();
+        TASK_SEND_NON_SPECIFIC_EOI();
 
 
+        #(`TB_CYCLE * 12);
+    end
+    endtask
 
 
-
-
-
-
-
+    //
+    // TASK : auto-eoi test
+    //
+    task TASK_AUTO_EOI_TEST;
+    begin
+        #(`TB_CYCLE * 0);
+        // ICW1
+        TASK_WRITE_DATA(1'b0, 8'b00011111);
+        // ICW2
+        TASK_WRITE_DATA(1'b1, 8'b01100000);
+        // ICW4
+        TASK_WRITE_DATA(1'b1, 8'b00000011);
+        // OCW1
+        TASK_WRITE_DATA(1'b1, 8'b00000000);
+        // OCW3
+        TASK_WRITE_DATA(1'b0, 8'b00001000);
+        // Interrupt
+        TASK_INTERRUPT_REQUEST(8'b11000000);
+        // ACK
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+        // Interrupt
+        TASK_INTERRUPT_REQUEST(8'b11000010);
+        // ACK
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+        // Interrupt
+        TASK_INTERRUPT_REQUEST(8'b00001000);
+        // ACK
+        TASK_SEND_ACK_TO_8086();
+        #(`TB_CYCLE * 5);
+    end
+    endtask
 
 
 
